@@ -1,0 +1,6 @@
+/target/
+*.war
+/target/
+*.class
+*.log
+pom.properties
