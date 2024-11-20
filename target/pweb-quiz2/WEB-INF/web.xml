@@ -31,5 +31,13 @@
         <url-pattern>/*</url-pattern> 
     </filter-mapping>
 
+    <servlet>
+        <servlet-name>TweetsServlet</servlet-name>
+        <servlet-class>quiz2.servlet.TweetsServlet</servlet-class>
+    </servlet>
+    <servlet-mapping>
+        <servlet-name>TweetsServlet</servlet-name>
+        <url-pattern>/createTweet</url-pattern>
+    </servlet-mapping>
 
 </web-app>

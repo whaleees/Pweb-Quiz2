@@ -1,4 +1,5 @@
 quiz2\servlet\LoginServlet.class
+quiz2\servlet\TweetsServlet.class
 quiz2\filter\AuthFilter.class
 quiz2\servlet\SignupServlet.class
 quiz2\utils\DBConnection.class
