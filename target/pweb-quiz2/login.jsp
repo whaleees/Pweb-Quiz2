@@ -2,7 +2,7 @@
 <html>
 <head>
     <title>Login</title>
-    <link rel="stylesheet" href="/css/login.css">
+    <link rel="stylesheet" href="/pweb-quiz2/css/login.css">
 </head>
 <body>
     <h1>Login</h1>

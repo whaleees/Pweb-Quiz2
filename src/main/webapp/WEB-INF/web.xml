@@ -40,4 +40,40 @@
         <url-pattern>/createTweet</url-pattern>
     </servlet-mapping>
 
+    <servlet>
+        <servlet-name>LikeServlet</servlet-name>
+        <servlet-class>quiz2.servlet.LikeServlet</servlet-class>
+    </servlet>
+    <servlet-mapping>
+        <servlet-name>LikeServlet</servlet-name>
+        <url-pattern>/likeTweet</url-pattern>
+    </servlet-mapping>
+
+    <servlet>
+        <servlet-name>ReplyServlet</servlet-name>
+        <servlet-class>quiz2.servlet.ReplyServlet</servlet-class>
+    </servlet>
+    <servlet-mapping>
+        <servlet-name>ReplyServlet</servlet-name>
+        <url-pattern>/replyTweet</url-pattern>
+    </servlet-mapping>
+
+    <servlet>
+        <servlet-name>LogoutServlet</servlet-name>
+        <servlet-class>quiz2.servlet.LogoutServlet</servlet-class>
+    </servlet>
+    <servlet-mapping>
+        <servlet-name>LogoutServlet</servlet-name>
+        <url-pattern>/logout</url-pattern>
+    </servlet-mapping>
+
+    <servlet>
+        <servlet-name>RetweetServlet</servlet-name>
+        <servlet-class>quiz2.servlet.RetweetServlet</servlet-class>
+    </servlet>
+    <servlet-mapping>
+        <servlet-name>RetweetServlet</servlet-name>
+        <url-pattern>/retweet</url-pattern>
+    </servlet-mapping>
+
 </web-app>

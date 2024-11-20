@@ -26,6 +26,7 @@
     List<String> tweets = new ArrayList<>();
     List<String> replies = new ArrayList<>();
     List<String> likes = new ArrayList<>();
+    List<String> retweets = new ArrayList<>();
     try (Connection conn = DBConnection.getConnection()) {
         // Fetch user tweets
         try (PreparedStatement ps = conn.prepareStatement("SELECT content FROM tweets WHERE user_id = (SELECT id FROM users WHERE email = ?)")) {
@@ -37,26 +38,61 @@
             }
         }
 
-        // Fetch user replies
-        try (PreparedStatement ps = conn.prepareStatement("SELECT content FROM replies WHERE user_id = (SELECT id FROM users WHERE email = ?)")) {
+        try (PreparedStatement ps = conn.prepareStatement(
+            "SELECT r.content AS reply_content, t.content AS tweet_content, u.username AS tweet_author " +
+            "FROM replies r " +
+            "JOIN tweets t ON r.tweet_id = t.id " +
+            "JOIN users u ON t.user_id = u.id " +
+            "WHERE r.user_id = (SELECT id FROM users WHERE email = ?)")) {
             ps.setString(1, email);
             try (ResultSet rs = ps.executeQuery()) {
                 while (rs.next()) {
-                    replies.add(rs.getString("content"));
+                    String replyContent = rs.getString("reply_content");
+                    String tweetContent = rs.getString("tweet_content");
+                    String tweetAuthor = rs.getString("tweet_author");
+        
+                    replies.add("Replied to \"" + tweetContent + "\" by @" + tweetAuthor + ": " + replyContent);
+                }
+            }
+        }
+        
+
+        try (PreparedStatement ps = conn.prepareStatement(
+            "SELECT t.content, u.username, t.created_at " +
+            "FROM likes l " +
+            "JOIN tweets t ON l.tweet_id = t.id " +
+            "JOIN users u ON t.user_id = u.id " +
+            "WHERE l.user_id = (SELECT id FROM users WHERE email = ?)")) {
+            ps.setString(1, email);
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) {
+                    String likeContent = rs.getString("content");
+                    String likeAuthor = rs.getString("username");
+                    String likeCreatedAt = rs.getString("created_at");
+
+                    likes.add(likeContent + " by @" + likeAuthor + " (Posted at: " + likeCreatedAt + ")");
                 }
             }
         }
 
-        // Fetch user likes
         try (PreparedStatement ps = conn.prepareStatement(
-                "SELECT t.content FROM likes l JOIN tweets t ON l.tweet_id = t.id WHERE l.user_id = (SELECT id FROM users WHERE email = ?)")) {
+            "SELECT t.content, u.username, t.created_at " +
+            "FROM retweets r " +
+            "JOIN tweets t ON r.tweet_id = t.id " +
+            "JOIN users u ON t.user_id = u.id " +
+            "WHERE r.user_id = (SELECT id FROM users WHERE email = ?)")) {
             ps.setString(1, email);
             try (ResultSet rs = ps.executeQuery()) {
                 while (rs.next()) {
-                    likes.add(rs.getString("content"));
+                    String retweetContent = rs.getString("content");
+                    String retweetAuthor = rs.getString("username");
+                    String retweetCreatedAt = rs.getString("created_at");
+
+                    retweets.add(retweetContent + " by @" + retweetAuthor + " (Posted at: " + retweetCreatedAt + ")");
                 }
             }
         }
+
     } catch (SQLException e) {
         e.printStackTrace();
     }
@@ -73,6 +109,7 @@
             document.getElementById("tweetsTab").style.display = "none";
             document.getElementById("repliesTab").style.display = "none";
             document.getElementById("likesTab").style.display = "none";
+            document.getElementById("retweetsTab").style.display = "none";
 
             document.getElementById(tabId).style.display = "block";
         }
@@ -85,13 +122,14 @@
             <ul>
                 <li><a href="/pweb-quiz2/">Home</a></li>
                 <li><a href="/pweb-quiz2/profile.jsp">Profile</a></li>
-                <li><a href="/logout">Logout</a></li>
+                <li><a href="/pweb-quiz2/logout">Logout</a></li>
             </ul>
         </nav>
     </header>
     <main>
         <nav>
             <button onclick="showTab('tweetsTab')">Tweets</button>
+            <button onclick="showTab('retweetsTab')">Retweets</button>
             <button onclick="showTab('repliesTab')">Replies</button>
             <button onclick="showTab('likesTab')">Likes</button>
         </nav>
@@ -107,6 +145,7 @@
                 <p>No tweets yet.</p>
             <% } %>
         </section>
+
 
         <section id="repliesTab" style="display: none;">
             <h2>Your Replies</h2>
@@ -129,6 +168,18 @@
             <% } %>
             <% if (likes.isEmpty()) { %>
                 <p>No liked tweets yet.</p>
+            <% } %>
+        </section>
+
+        <section id="retweetsTab" style="display: none;">
+            <h2>Your Retweets</h2>
+            <% for (String retweet : retweets) { %>
+                <div class="retweet">
+                    <p><%= retweet %></p>
+                </div>
+            <% } %>
+            <% if (retweets.isEmpty()) { %>
+                <p>No retweets yet.</p>
             <% } %>
         </section>
     </main>

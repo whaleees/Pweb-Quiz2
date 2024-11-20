@@ -6,8 +6,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>CROD</title>
-    <link rel="stylesheet" href="css/styles.css">
-    <script defer src="js/scripts.js"></script>
+    <link rel="stylesheet" href="/pweb-quiz2/css/styles.css">
+    <script defer src="/pweb-quiz2/js/script.js"></script>
 </head>
 <body>
     <header>
@@ -15,13 +15,12 @@
             <ul>
                 <li><a href="/pweb-quiz2/">Home</a></li>
                 <li><a href="/pweb-quiz2/profile.jsp">Profile</a></li>
-                <li><a href="/logout">Logout</a></li>
+                <li><a href="/pweb-quiz2/logout">Logout</a></li>
             </ul>
         </nav>
         <h1>CROD</h1>
     </header>
     <main>
-        <!-- Create Tweet Form -->
         <h3>Create a Tweet</h3>
         <form id="createTweetForm" action="/pweb-quiz2/createTweet" method="post">
             <textarea name="content" rows="3" placeholder="What's happening?" required></textarea>
@@ -33,18 +32,35 @@
             <%
                 try (Connection conn = DBConnection.getConnection();
                      PreparedStatement ps = conn.prepareStatement(
-                             "SELECT t.content, u.username, t.created_at " +
-                             "FROM tweets t JOIN users u ON t.user_id = u.id ORDER BY t.created_at DESC")) {
+                        "SELECT t.id, t.content, u.username, t.created_at, " +
+                        "(SELECT COUNT(*) FROM likes WHERE likes.tweet_id = t.id) AS like_count, " +
+                        "(SELECT COUNT(*) FROM replies WHERE replies.tweet_id = t.id) AS reply_count, " +
+                        "(SELECT COUNT(*) FROM retweets WHERE retweets.tweet_id = t.id) AS retweet_count " +
+                        "FROM tweets t JOIN users u ON t.user_id = u.id ORDER BY t.created_at DESC")) {
                     try (ResultSet rs = ps.executeQuery()) {
                         while (rs.next()) {
+                            int tweetId = rs.getInt("id");
                             String username = rs.getString("username");
                             String content = rs.getString("content");
                             String createdAt = rs.getString("created_at");
+                            int likeCount = rs.getInt("like_count");
+                            int replyCount = rs.getInt("reply_count");
+                            int retweetCount = rs.getInt("retweet_count");
             %>
-                            <div class="tweet">
+                            <div class="tweet" id="tweet_<%= tweetId %>">
                                 <h4>@<%= username %></h4>
                                 <p><%= content %></p>
                                 <small>Posted at: <%= createdAt %></small>
+                                <div class="actions">
+                                    <button onclick="likeTweet('<%= tweetId %>')">Like (<span id="likeCount_<%= tweetId %>"><%= likeCount %></span>)</button>
+                                    <button onclick="toggleReplyForm('<%= tweetId %>')">Reply (<span id="replyCount_<%= tweetId %>"><%= replyCount %></span>)</button>
+                                    <button id="retweetButton_<%= tweetId %>" onclick="retweet('<%= tweetId %>')">Retweet (<span id="retweetCount_<%= tweetId %>"><%= retweetCount %></span>)</button>
+                                </div>
+                                <div id="replyForm_<%= tweetId %>" class="reply-form" style="display: none;">
+                                    <textarea id="replyContent_<%= tweetId %>" rows="2" placeholder="Write a reply..." required></textarea>
+                                    <button onclick="submitReply('<%= tweetId %>')">Submit</button>
+                                    <button onclick="toggleReplyForm('<%= tweetId %>')">Cancel</button>
+                                </div>
                             </div>
             <%
                         }
@@ -55,32 +71,8 @@
                 }
             %>
         </div>
+        
+        
     </main>
-    <script>
-        // Example JavaScript for client-side functionality
-        function editTweet(tweetId) {
-            // Show edit form
-            const editForm = document.getElementById("editTweetFormContainer");
-            editForm.style.display = "block";
-
-            // Populate form with tweet data (you would fetch this from the server in a real app)
-            document.getElementById("tweetId").value = tweetId;
-            editForm.querySelector("textarea").value = "This is an example tweet. It can be edited.";
-        }
-
-        function deleteTweet(tweetId) {
-            // Confirm and send delete request (you would call the server here)
-            if (confirm("Are you sure you want to delete this tweet?")) {
-                alert("Tweet " + tweetId + " deleted!");
-                // Remove tweet from UI or refresh the page
-            }
-        }
-
-        function cancelEdit() {
-            // Hide edit form
-            const editForm = document.getElementById("editTweetFormContainer");
-            editForm.style.display = "none";
-        }
-    </script>
 </body>
 </html>
