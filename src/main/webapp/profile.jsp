@@ -26,7 +26,6 @@
     List<Map<String, String>> retweets = new ArrayList<>();
 
     try (Connection conn = DBConnection.getConnection()) {
-        // Fetch user tweets
         try (PreparedStatement ps = conn.prepareStatement(
             "SELECT content, image_path FROM tweets WHERE user_id = (SELECT id FROM users WHERE email = ?)")) {
             ps.setString(1, email);
@@ -40,7 +39,6 @@
             }
         }
 
-        // Fetch user replies
         try (PreparedStatement ps = conn.prepareStatement(
             "SELECT r.content AS reply_content, t.content AS tweet_content, u.username AS tweet_author, t.image_path " +
             "FROM replies r " +
@@ -60,7 +58,6 @@
             }
         }
 
-        // Fetch user likes
         try (PreparedStatement ps = conn.prepareStatement(
             "SELECT t.content, u.username, t.created_at, t.image_path " +
             "FROM likes l " +
@@ -80,7 +77,6 @@
             }
         }
 
-        // Fetch user retweets
         try (PreparedStatement ps = conn.prepareStatement(
             "SELECT t.content, u.username, t.created_at, t.image_path " +
             "FROM retweets r " +
