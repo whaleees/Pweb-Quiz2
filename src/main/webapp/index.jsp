@@ -22,8 +22,13 @@
     </header>
     <main>
         <h3>Create a Tweet</h3>
-        <form id="createTweetForm" action="/pweb-quiz2/createTweet" method="post">
+        <form id="createTweetForm" action="/pweb-quiz2/createTweet" method="post" enctype="multipart/form-data">
             <textarea name="content" rows="3" placeholder="What's happening?" required></textarea>
+            <input type="file" name="image" accept="image/*">
+            <div id="imagePreviewContainer" style="display: none;">
+                <p>Image Preview:</p>
+                <img id="imagePreview" src="" alt="Preview" style="max-width: 100%; height: auto;">
+            </div>
             <button type="submit">Tweet</button>
         </form>
 
@@ -35,8 +40,10 @@
                         "SELECT t.id, t.content, u.username, t.created_at, " +
                         "(SELECT COUNT(*) FROM likes WHERE likes.tweet_id = t.id) AS like_count, " +
                         "(SELECT COUNT(*) FROM replies WHERE replies.tweet_id = t.id) AS reply_count, " +
-                        "(SELECT COUNT(*) FROM retweets WHERE retweets.tweet_id = t.id) AS retweet_count " +
-                        "FROM tweets t JOIN users u ON t.user_id = u.id ORDER BY t.created_at DESC")) {
+                        "(SELECT COUNT(*) FROM retweets WHERE retweets.tweet_id = t.id) AS retweet_count, " +
+                        "t.image_path " + // Correctly concatenate this line
+                        "FROM tweets t JOIN users u ON t.user_id = u.id ORDER BY t.created_at DESC"
+                        )) {
                     try (ResultSet rs = ps.executeQuery()) {
                         while (rs.next()) {
                             int tweetId = rs.getInt("id");
@@ -46,10 +53,15 @@
                             int likeCount = rs.getInt("like_count");
                             int replyCount = rs.getInt("reply_count");
                             int retweetCount = rs.getInt("retweet_count");
+                            String imagePath = rs.getString("image_path");
+
             %>
                             <div class="tweet" id="tweet_<%= tweetId %>">
                                 <h4>@<%= username %></h4>
                                 <p><%= content %></p>
+                                <% if (imagePath != null && !imagePath.isEmpty()) { %>
+                                    <img src="/pweb-quiz2/<%= imagePath %>" alt="Tweet image" style="max-width: 100%; height: auto;">
+                                <% } %>
                                 <small>Posted at: <%= createdAt %></small>
                                 <div class="actions">
                                     <button onclick="likeTweet('<%= tweetId %>')">Like (<span id="likeCount_<%= tweetId %>"><%= likeCount %></span>)</button>

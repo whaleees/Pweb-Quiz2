@@ -1,14 +1,12 @@
 <%@ page contentType="text/html; charset=UTF-8" language="java" %>
-<%@ page import="java.sql.*, java.util.ArrayList, java.util.List, quiz2.utils.DBConnection" %>
+<%@ page import="java.sql.*, java.util.ArrayList, java.util.List, java.util.Map, java.util.HashMap, quiz2.utils.DBConnection" %>
 <%
-    // Check if the user is logged in
     String email = (String) session.getAttribute("email");
     if (email == null) {
         response.sendRedirect("login.jsp");
         return;
     }
 
-    // Fetch user details from the database
     String username = "";
     try (Connection conn = DBConnection.getConnection();
          PreparedStatement ps = conn.prepareStatement("SELECT username FROM users WHERE email = ?")) {
@@ -22,24 +20,29 @@
         e.printStackTrace();
     }
 
-    // Fetch tweets, replies, and likes
-    List<String> tweets = new ArrayList<>();
-    List<String> replies = new ArrayList<>();
-    List<String> likes = new ArrayList<>();
-    List<String> retweets = new ArrayList<>();
+    List<Map<String, String>> tweets = new ArrayList<>();
+    List<Map<String, String>> replies = new ArrayList<>();
+    List<Map<String, String>> likes = new ArrayList<>();
+    List<Map<String, String>> retweets = new ArrayList<>();
+
     try (Connection conn = DBConnection.getConnection()) {
         // Fetch user tweets
-        try (PreparedStatement ps = conn.prepareStatement("SELECT content FROM tweets WHERE user_id = (SELECT id FROM users WHERE email = ?)")) {
+        try (PreparedStatement ps = conn.prepareStatement(
+            "SELECT content, image_path FROM tweets WHERE user_id = (SELECT id FROM users WHERE email = ?)")) {
             ps.setString(1, email);
             try (ResultSet rs = ps.executeQuery()) {
                 while (rs.next()) {
-                    tweets.add(rs.getString("content"));
+                    Map<String, String> tweet = new HashMap<>();
+                    tweet.put("content", rs.getString("content"));
+                    tweet.put("image_path", rs.getString("image_path"));
+                    tweets.add(tweet);
                 }
             }
         }
 
+        // Fetch user replies
         try (PreparedStatement ps = conn.prepareStatement(
-            "SELECT r.content AS reply_content, t.content AS tweet_content, u.username AS tweet_author " +
+            "SELECT r.content AS reply_content, t.content AS tweet_content, u.username AS tweet_author, t.image_path " +
             "FROM replies r " +
             "JOIN tweets t ON r.tweet_id = t.id " +
             "JOIN users u ON t.user_id = u.id " +
@@ -47,18 +50,19 @@
             ps.setString(1, email);
             try (ResultSet rs = ps.executeQuery()) {
                 while (rs.next()) {
-                    String replyContent = rs.getString("reply_content");
-                    String tweetContent = rs.getString("tweet_content");
-                    String tweetAuthor = rs.getString("tweet_author");
-        
-                    replies.add("Replied to \"" + tweetContent + "\" by @" + tweetAuthor + ": " + replyContent);
+                    Map<String, String> reply = new HashMap<>();
+                    reply.put("reply_content", rs.getString("reply_content"));
+                    reply.put("tweet_content", rs.getString("tweet_content"));
+                    reply.put("tweet_author", rs.getString("tweet_author"));
+                    reply.put("image_path", rs.getString("image_path"));
+                    replies.add(reply);
                 }
             }
         }
-        
 
+        // Fetch user likes
         try (PreparedStatement ps = conn.prepareStatement(
-            "SELECT t.content, u.username, t.created_at " +
+            "SELECT t.content, u.username, t.created_at, t.image_path " +
             "FROM likes l " +
             "JOIN tweets t ON l.tweet_id = t.id " +
             "JOIN users u ON t.user_id = u.id " +
@@ -66,17 +70,19 @@
             ps.setString(1, email);
             try (ResultSet rs = ps.executeQuery()) {
                 while (rs.next()) {
-                    String likeContent = rs.getString("content");
-                    String likeAuthor = rs.getString("username");
-                    String likeCreatedAt = rs.getString("created_at");
-
-                    likes.add(likeContent + " by @" + likeAuthor + " (Posted at: " + likeCreatedAt + ")");
+                    Map<String, String> like = new HashMap<>();
+                    like.put("content", rs.getString("content"));
+                    like.put("username", rs.getString("username"));
+                    like.put("created_at", rs.getString("created_at"));
+                    like.put("image_path", rs.getString("image_path"));
+                    likes.add(like);
                 }
             }
         }
 
+        // Fetch user retweets
         try (PreparedStatement ps = conn.prepareStatement(
-            "SELECT t.content, u.username, t.created_at " +
+            "SELECT t.content, u.username, t.created_at, t.image_path " +
             "FROM retweets r " +
             "JOIN tweets t ON r.tweet_id = t.id " +
             "JOIN users u ON t.user_id = u.id " +
@@ -84,15 +90,15 @@
             ps.setString(1, email);
             try (ResultSet rs = ps.executeQuery()) {
                 while (rs.next()) {
-                    String retweetContent = rs.getString("content");
-                    String retweetAuthor = rs.getString("username");
-                    String retweetCreatedAt = rs.getString("created_at");
-
-                    retweets.add(retweetContent + " by @" + retweetAuthor + " (Posted at: " + retweetCreatedAt + ")");
+                    Map<String, String> retweet = new HashMap<>();
+                    retweet.put("content", rs.getString("content"));
+                    retweet.put("username", rs.getString("username"));
+                    retweet.put("created_at", rs.getString("created_at"));
+                    retweet.put("image_path", rs.getString("image_path"));
+                    retweets.add(retweet);
                 }
             }
         }
-
     } catch (SQLException e) {
         e.printStackTrace();
     }
@@ -110,7 +116,6 @@
             document.getElementById("repliesTab").style.display = "none";
             document.getElementById("likesTab").style.display = "none";
             document.getElementById("retweetsTab").style.display = "none";
-
             document.getElementById(tabId).style.display = "block";
         }
     </script>
@@ -129,16 +134,19 @@
     <main>
         <nav>
             <button onclick="showTab('tweetsTab')">Tweets</button>
-            <button onclick="showTab('retweetsTab')">Retweets</button>
             <button onclick="showTab('repliesTab')">Replies</button>
             <button onclick="showTab('likesTab')">Likes</button>
+            <button onclick="showTab('retweetsTab')">Retweets</button>
         </nav>
 
         <section id="tweetsTab">
             <h2>Your Tweets</h2>
-            <% for (String tweet : tweets) { %>
+            <% for (Map<String, String> tweet : tweets) { %>
                 <div class="tweet">
-                    <p><%= tweet %></p>
+                    <p><%= tweet.get("content") %></p>
+                    <% if (tweet.get("image_path") != null) { %>
+                        <img src="/pweb-quiz2/<%= tweet.get("image_path") %>" alt="Tweet image" style="max-width: 100%; height: auto;">
+                    <% } %>
                 </div>
             <% } %>
             <% if (tweets.isEmpty()) { %>
@@ -146,12 +154,14 @@
             <% } %>
         </section>
 
-
         <section id="repliesTab" style="display: none;">
             <h2>Your Replies</h2>
-            <% for (String reply : replies) { %>
+            <% for (Map<String, String> reply : replies) { %>
                 <div class="reply">
-                    <p><%= reply %></p>
+                    <p>Replied to "<%= reply.get("tweet_content") %>" by @<%= reply.get("tweet_author") %>: <%= reply.get("reply_content") %></p>
+                    <% if (reply.get("image_path") != null) { %>
+                        <img src="/pweb-quiz2/<%= reply.get("image_path") %>" alt="Tweet image" style="max-width: 100%; height: auto;">
+                    <% } %>
                 </div>
             <% } %>
             <% if (replies.isEmpty()) { %>
@@ -161,9 +171,12 @@
 
         <section id="likesTab" style="display: none;">
             <h2>Your Liked Tweets</h2>
-            <% for (String like : likes) { %>
+            <% for (Map<String, String> like : likes) { %>
                 <div class="like">
-                    <p><%= like %></p>
+                    <p><%= like.get("content") %> by @<%= like.get("username") %> (Posted at: <%= like.get("created_at") %>)</p>
+                    <% if (like.get("image_path") != null) { %>
+                        <img src="/pweb-quiz2/<%= like.get("image_path") %>" alt="Tweet image" style="max-width: 100%; height: auto;">
+                    <% } %>
                 </div>
             <% } %>
             <% if (likes.isEmpty()) { %>
@@ -173,9 +186,12 @@
 
         <section id="retweetsTab" style="display: none;">
             <h2>Your Retweets</h2>
-            <% for (String retweet : retweets) { %>
+            <% for (Map<String, String> retweet : retweets) { %>
                 <div class="retweet">
-                    <p><%= retweet %></p>
+                    <p><%= retweet.get("content") %> by @<%= retweet.get("username") %> (Posted at: <%= retweet.get("created_at") %>)</p>
+                    <% if (retweet.get("image_path") != null) { %>
+                        <img src="/pweb-quiz2/<%= retweet.get("image_path") %>" alt="Tweet image" style="max-width: 100%; height: auto;">
+                    <% } %>
                 </div>
             <% } %>
             <% if (retweets.isEmpty()) { %>

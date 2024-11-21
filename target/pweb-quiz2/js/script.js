@@ -94,4 +94,28 @@ function retweet(tweetId) {
     });
 }
 
+document.querySelector('input[name="image"]').addEventListener('change', function (event) {
+    const preview = document.createElement('img');
+    preview.style.maxWidth = '100%';
+    preview.style.height = 'auto';
+    preview.src = URL.createObjectURL(event.target.files[0]);
+    document.getElementById('createTweetForm').appendChild(preview);
+});
+
+function previewImage(event) {
+    const preview = document.getElementById('imagePreview');
+    const previewContainer = document.getElementById('imagePreviewContainer');
+    const file = event.target.files[0];
+    if (file) {
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            preview.src = e.target.result;
+            previewContainer.style.display = 'block';
+        };
+        reader.readAsDataURL(file);
+    } else {
+        preview.src = '';
+        previewContainer.style.display = 'none';
+    }
+}
 
