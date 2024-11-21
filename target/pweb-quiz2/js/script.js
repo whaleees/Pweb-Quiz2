@@ -119,3 +119,57 @@ function previewImage(event) {
     }
 }
 
+function performSearch(keyword) {
+    if (keyword.trim() === "") {
+        document.getElementById("searchResults").classList.add("hidden");
+        return;
+    }
+
+    const params = new URLSearchParams();
+    params.append("keyword", keyword);
+
+    fetch(`/pweb-quiz2/search?${params.toString()}`)
+        .then((response) => response.json())
+        .then((data) => {
+            const searchResults = document.getElementById("searchResults");
+            const tweetResults = document.getElementById("tweetResults");
+            const userResults = document.getElementById("userResults");
+
+            tweetResults.innerHTML = "";
+            userResults.innerHTML = "";
+
+            if (data.tweets && data.tweets.length > 0) {
+                data.tweets.forEach((tweet) => {
+                    const tweetItem = document.createElement("div");
+                    tweetItem.className = "p-2 bg-gray-100 rounded";
+                    tweetItem.innerHTML = `
+                        <p class="text-gray-700"><strong>@${tweet.username}</strong>: ${tweet.content}</p>
+                    `;
+                    tweetResults.appendChild(tweetItem);
+                });
+                document.getElementById("tweetsSection").classList.remove("hidden");
+            } else {
+                document.getElementById("tweetsSection").classList.add("hidden");
+            }
+
+            if (data.users && data.users.length > 0) {
+                data.users.forEach((user) => {
+                    const userItem = document.createElement("div");
+                    userItem.className = "p-2 bg-gray-100 rounded";
+                    userItem.innerHTML = `<p class="text-gray-700"><strong>@${user.username}</strong></p>`;
+                    userResults.appendChild(userItem);
+                });
+                document.getElementById("usersSection").classList.remove("hidden");
+            } else {
+                document.getElementById("usersSection").classList.add("hidden");
+            }
+
+            searchResults.classList.remove("hidden");
+        })
+        .catch((error) => {
+            console.error("Error fetching search results:", error);
+        });
+}
+
+
+

@@ -16,9 +16,9 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 
 @MultipartConfig(
-    fileSizeThreshold = 1024 * 1024 * 2, // 2MB
-    maxFileSize = 1024 * 1024 * 10,      // 10MB
-    maxRequestSize = 1024 * 1024 * 50    // 50MB
+    fileSizeThreshold = 1024 * 1024 * 2, 
+    maxFileSize = 1024 * 1024 * 10,      
+    maxRequestSize = 1024 * 1024 * 50    
 )
 public class TweetsServlet extends HttpServlet {
     private static final String UPLOAD_DIR = "uploads";
@@ -53,15 +53,13 @@ public class TweetsServlet extends HttpServlet {
                 }
     
                 File imageFile = new File(uploadDir, fileName);
-                filePart.write(imageFile.getAbsolutePath()); // Save the file to the directory
-                imagePath = UPLOAD_DIR + "/" + fileName; // Store the relative path
+                filePart.write(imageFile.getAbsolutePath()); 
+                imagePath = UPLOAD_DIR + "/" + fileName; 
             }
 
-            // Insert tweet into database
             try (Connection conn = DBConnection.getConnection()) {
                 int userId;
 
-                // Get user ID
                 try (PreparedStatement ps = conn.prepareStatement("SELECT id FROM users WHERE email = ?")) {
                     ps.setString(1, email);
                     try (ResultSet rs = ps.executeQuery()) {
@@ -74,7 +72,6 @@ public class TweetsServlet extends HttpServlet {
                     }
                 }
 
-                // Insert tweet into the database
                 String insertTweet = "INSERT INTO tweets (user_id, content, image_path) VALUES (?, ?, ?)";
                 try (PreparedStatement ps = conn.prepareStatement(insertTweet)) {
                     ps.setInt(1, userId);
@@ -84,9 +81,7 @@ public class TweetsServlet extends HttpServlet {
                 }
             }
 
-            // Redirect to home page
             response.sendRedirect("index.jsp");
-
         } catch (Exception e) {
             e.printStackTrace();
             response.getWriter().println("<h1>Error creating tweet: " + e.getMessage() + "</h1>");

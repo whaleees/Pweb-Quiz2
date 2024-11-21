@@ -20,24 +20,18 @@ public class AuthFilter implements Filter {
         HttpServletRequest httpRequest = (HttpServletRequest) request;
         HttpServletResponse httpResponse = (HttpServletResponse) response;
 
-        // Get the current session (if exists)
         HttpSession session = httpRequest.getSession(false);
 
-        // Check if user is logged in
         boolean isLoggedIn = (session != null && session.getAttribute("email") != null);
 
-        // Get the requested URI
         String requestURI = httpRequest.getRequestURI();
 
-        // Allow access to login and signup pages without authentication
         boolean isLoginOrSignup = requestURI.endsWith("login") || requestURI.endsWith("signup") 
                 || requestURI.endsWith("login.jsp") || requestURI.endsWith("signup.jsp");
 
         if (isLoggedIn || isLoginOrSignup) {
-            // User is logged in or accessing login/signup, continue the request
             chain.doFilter(request, response);
         } else {
-            // Redirect to the login page
             httpResponse.sendRedirect(httpRequest.getContextPath() + "/login.jsp");
         }
     }

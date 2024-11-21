@@ -8,12 +8,27 @@
     }
 
     String username = "";
-    try (Connection conn = DBConnection.getConnection();
-         PreparedStatement ps = conn.prepareStatement("SELECT username FROM users WHERE email = ?")) {
-        ps.setString(1, email);
-        try (ResultSet rs = ps.executeQuery()) {
-            if (rs.next()) {
-                username = rs.getString("username");
+    int tweetCount = 0;
+    try (Connection conn = DBConnection.getConnection()) {
+        // Retrieve username
+        try (PreparedStatement ps = conn.prepareStatement("SELECT username FROM users WHERE email = ?")) {
+            ps.setString(1, email);
+            try (ResultSet rs = ps.executeQuery()) {
+                if (rs.next()) {
+                    username = rs.getString("username");
+                }
+            }
+        }
+
+        // Count tweets
+        try (PreparedStatement ps = conn.prepareStatement(
+            "SELECT COUNT(*) AS tweet_count FROM tweets WHERE user_id = (SELECT id FROM users WHERE email = ?)"
+        )) {
+            ps.setString(1, email);
+            try (ResultSet rs = ps.executeQuery()) {
+                if (rs.next()) {
+                    tweetCount = rs.getInt("tweet_count");
+                }
             }
         }
     } catch (SQLException e) {
@@ -26,7 +41,6 @@
     List<Map<String, String>> retweets = new ArrayList<>();
 
     try (Connection conn = DBConnection.getConnection()) {
-        // Fetch user tweets
         try (PreparedStatement ps = conn.prepareStatement(
             "SELECT content, image_path FROM tweets WHERE user_id = (SELECT id FROM users WHERE email = ?)")) {
             ps.setString(1, email);
@@ -40,7 +54,6 @@
             }
         }
 
-        // Fetch user replies
         try (PreparedStatement ps = conn.prepareStatement(
             "SELECT r.content AS reply_content, t.content AS tweet_content, u.username AS tweet_author, t.image_path " +
             "FROM replies r " +
@@ -60,7 +73,6 @@
             }
         }
 
-        // Fetch user likes
         try (PreparedStatement ps = conn.prepareStatement(
             "SELECT t.content, u.username, t.created_at, t.image_path " +
             "FROM likes l " +
@@ -80,7 +92,6 @@
             }
         }
 
-        // Fetch user retweets
         try (PreparedStatement ps = conn.prepareStatement(
             "SELECT t.content, u.username, t.created_at, t.image_path " +
             "FROM retweets r " +
@@ -109,95 +120,166 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Profile</title>
-    <link rel="stylesheet" href="css/profile.css">
-    <script>
-        function showTab(tabId) {
-            document.getElementById("tweetsTab").style.display = "none";
-            document.getElementById("repliesTab").style.display = "none";
-            document.getElementById("likesTab").style.display = "none";
-            document.getElementById("retweetsTab").style.display = "none";
-            document.getElementById(tabId).style.display = "block";
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script defer src="js/profile.js"></script>
+    <style>
+        :root {
+            --primary: #D9C8AD; 
+            --secondary: #F1EDE4;
+            --accent: #8E7C71; 
+            --background: #FAF9F7; 
+            --text-primary: #3E3D3A; 
+            --text-secondary: #5C5B58; 
+            --reply-bg: #E9E4D9;
+            --button-bg: #D6C5A7;
+            --button-text: #5C5B58;
+            --button-hover-bg: #C4B395;
         }
-    </script>
+    </style>
 </head>
-<body>
-    <header>
-        <h1>Welcome, <%= username %>!</h1>
-        <nav>
-            <ul>
-                <li><a href="/pweb-quiz2/">Home</a></li>
-                <li><a href="/pweb-quiz2/profile.jsp">Profile</a></li>
-                <li><a href="/pweb-quiz2/logout">Logout</a></li>
-            </ul>
-        </nav>
+<body class="bg-[var(--background)] text-[var(--text-primary)]">
+    <header class="bg-[var(--primary)] text-[var(--text-primary)] shadow-lg">
+        <div class="container mx-auto flex items-center justify-between py-6 px-8">
+            <h1 class="text-4xl font-extrabold">
+                <a href="/pweb-quiz2/" class="hover:text-[var(--accent)]">K</a>
+            </h1>
+            <nav>
+                <ul class="flex space-x-12 text-lg font-medium">
+                    <li><a href="/pweb-quiz2/" class="hover:text-[var(--accent)]">Home</a></li>
+                    <li><a href="/pweb-quiz2/profile.jsp" class="hover:text-[var(--accent)]">Profile</a></li>
+                    <li><a href="/pweb-quiz2/logout" class="hover:text-[var(--accent)]">Logout</a></li>
+                </ul>
+            </nav>
+            <div class="relative w-64">
+                <input
+                    type="text"
+                    id="searchInput"
+                    oninput="performSearch(this.value)"
+                    placeholder="Search..."
+                    class="w-full px-4 py-2 text-lg rounded-lg border border-[var(--accent)] text-[var(--text-primary)] focus:outline-none focus:ring-4 focus:ring-[var(--accent)]"
+                />
+                <div
+                    id="searchResults"
+                    class="absolute bg-white text-gray-800 shadow-md rounded-lg w-full mt-2 z-10 hidden p-4"
+                >
+                    <div id="tweetsSection">
+                        <h3 class="text-[var(--accent)] font-bold">Tweets:</h3>
+                        <div id="tweetResults"></div>
+                    </div>
+                    <div id="usersSection" class="mt-4">
+                        <h3 class="text-[var(--accent)] font-bold">Users:</h3>
+                        <div id="userResults"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
     </header>
-    <main>
-        <nav>
-            <button onclick="showTab('tweetsTab')">Tweets</button>
-            <button onclick="showTab('repliesTab')">Replies</button>
-            <button onclick="showTab('likesTab')">Likes</button>
-            <button onclick="showTab('retweetsTab')">Retweets</button>
+
+    <main class="container mx-auto mt-8 px-6">
+        <section class="bg-[var(--secondary)] shadow-md rounded-lg p-8 mb-8 text-center">
+            <h2 class="text-3xl font-bold text-[var(--accent)] mb-4"><%= username %></h2>
+            <h2 class="text-lg text-[var(--text-secondary)] mb-4"><%= email %></h2>
+            <div class="flex justify-center mt-4 space-x-8">
+                <div>
+                    <p class="text-2xl font-bold text-[var(--accent)]"><%= tweetCount %></p>
+                    <p class="text-[var(--text-secondary)]">Tweets</p>
+                </div>
+            </div>
+        </section>
+
+        <nav class="flex justify-center space-x-4 mb-6">
+            <button onclick="showTab('tweetsTab')" class="px-4 py-2 rounded-lg bg-[var(--button-bg)] text-[var(--text-primary)] hover:bg-[var(--button-hover-bg)]">Tweets</button>
+            <button onclick="showTab('repliesTab')" class="px-4 py-2 rounded-lg bg-[var(--button-bg)] text-[var(--text-primary)] hover:bg-[var(--button-hover-bg)]">Replies</button>
+            <button onclick="showTab('likesTab')" class="px-4 py-2 rounded-lg bg-[var(--button-bg)] text-[var(--text-primary)] hover:bg-[var(--button-hover-bg)]">Likes</button>
+            <button onclick="showTab('retweetsTab')" class="px-4 py-2 rounded-lg bg-[var(--button-bg)] text-[var(--text-primary)] hover:bg-[var(--button-hover-bg)]">Retweets</button>
         </nav>
 
         <section id="tweetsTab">
-            <h2>Your Tweets</h2>
+            <h2 class="text-xl font-bold mb-4 text-[var(--accent)]">Your Tweets</h2>
             <% for (Map<String, String> tweet : tweets) { %>
-                <div class="tweet">
-                    <p><%= tweet.get("content") %></p>
+                <div class="bg-[var(--secondary)] shadow p-6 rounded-lg mb-4">
+                    <p class="text-[var(--text-primary)]"><%= tweet.get("content") %></p>
                     <% if (tweet.get("image_path") != null) { %>
-                        <img src="/pweb-quiz2/<%= tweet.get("image_path") %>" alt="Tweet image" style="max-width: 100%; height: auto;">
+                        <img
+                            src="/pweb-quiz2/<%= tweet.get("image_path") %>"
+                            alt="Tweet image"
+                            class="mt-4 rounded-lg shadow max-w-full"
+                        />
                     <% } %>
                 </div>
             <% } %>
             <% if (tweets.isEmpty()) { %>
-                <p>No tweets yet.</p>
+                <p class="text-[var(--text-secondary)] text-center">No tweets yet.</p>
             <% } %>
         </section>
 
         <section id="repliesTab" style="display: none;">
-            <h2>Your Replies</h2>
+            <h2 class="text-xl font-bold mb-4 text-[var(--accent)]">Your Replies</h2>
             <% for (Map<String, String> reply : replies) { %>
-                <div class="reply">
-                    <p>Replied to "<%= reply.get("tweet_content") %>" by @<%= reply.get("tweet_author") %>: <%= reply.get("reply_content") %></p>
+                <div class="bg-[var(--secondary)] shadow p-6 rounded-lg mb-4">
+                    <p class="text-[var(--text-primary)]"><%= reply.get("content") %></p>
                     <% if (reply.get("image_path") != null) { %>
-                        <img src="/pweb-quiz2/<%= reply.get("image_path") %>" alt="Tweet image" style="max-width: 100%; height: auto;">
+                        <img    
+                            src="/pweb-quiz2/<%= reply.get("image_path") %>" 
+                            alt="Tweet image" 
+                            class="mt-4 rounded shadow max-w-full"
+                        />
                     <% } %>
                 </div>
             <% } %>
             <% if (replies.isEmpty()) { %>
-                <p>No replies yet.</p>
+                <p class="text-[var(--text-secondary)] text-center">No replies yet.</p>
             <% } %>
         </section>
 
         <section id="likesTab" style="display: none;">
-            <h2>Your Liked Tweets</h2>
+            <h2 class="text-xl font-bold mb-4 text-[var(--accent)]">Your Liked Tweets</h2>
             <% for (Map<String, String> like : likes) { %>
-                <div class="like">
-                    <p><%= like.get("content") %> by @<%= like.get("username") %> (Posted at: <%= like.get("created_at") %>)</p>
+                <div class="bg-[var(--secondary)] shadow p-6 rounded-lg mb-4">
+                    <p class="text-[var(--text-primary)]">
+                        <%= like.get("content") %> by 
+                        <span class="font-bold">@<%= like.get("username") %></span> 
+                        <small class="text-gray-500">(Posted at: <%= like.get("created_at") %>)</small>
+                    </p>
                     <% if (like.get("image_path") != null) { %>
-                        <img src="/pweb-quiz2/<%= like.get("image_path") %>" alt="Tweet image" style="max-width: 100%; height: auto;">
+                        <img 
+                            src="/pweb-quiz2/<%= like.get("image_path") %>" 
+                            alt="Tweet image" 
+                            class="mt-4 rounded shadow max-w-full"
+                        />
                     <% } %>
                 </div>
             <% } %>
             <% if (likes.isEmpty()) { %>
-                <p>No liked tweets yet.</p>
+                <p class="text-[var(--text-secondary)] text-center">No liked tweets yet.</p>
             <% } %>
         </section>
 
         <section id="retweetsTab" style="display: none;">
-            <h2>Your Retweets</h2>
+            <h2 class="text-xl font-bold mb-4 text-[var(--accent)]">Your Retweets</h2>
             <% for (Map<String, String> retweet : retweets) { %>
-                <div class="retweet">
-                    <p><%= retweet.get("content") %> by @<%= retweet.get("username") %> (Posted at: <%= retweet.get("created_at") %>)</p>
+                <div class="bg-[var(--secondary)] shadow p-6 rounded-lg mb-4">
+                    <p class="text-[var(--text-primary)]">
+                        <%= retweet.get("content") %> by 
+                        <span class="font-bold">@<%= retweet.get("username") %></span> 
+                        <small class="text-gray-500">(Posted at: <%= retweet.get("created_at") %>)</small>
+                    </p>
                     <% if (retweet.get("image_path") != null) { %>
-                        <img src="/pweb-quiz2/<%= retweet.get("image_path") %>" alt="Tweet image" style="max-width: 100%; height: auto;">
+                        <img 
+                            src="/pweb-quiz2/<%= retweet.get("image_path") %>" 
+                            alt="Tweet image" 
+                            class="mt-4 rounded shadow max-w-full"
+                        />
                     <% } %>
                 </div>
             <% } %>
             <% if (retweets.isEmpty()) { %>
-                <p>No retweets yet.</p>
+                <p class="text-[var(--text-secondary)] text-center">No retweets yet.</p>
             <% } %>
         </section>
     </main>
 </body>
 </html>
+
+
+
