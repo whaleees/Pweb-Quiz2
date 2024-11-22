@@ -14,6 +14,7 @@ import java.io.IOException;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
+import java.sql.SQLException;
 
 @MultipartConfig(
     fileSizeThreshold = 1024 * 1024 * 2, 
@@ -25,6 +26,17 @@ public class TweetsServlet extends HttpServlet {
 
     @Override
     protected void doPost(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
+        String methodOverride = request.getParameter("_method");
+    
+        if ("PUT".equalsIgnoreCase(methodOverride)) {
+            doPut(request, response);
+            return;
+        }
+    
+        if ("DELETE".equalsIgnoreCase(methodOverride)) {
+            doDelete(request, response);
+            return;
+        }
         HttpSession session = request.getSession(false);
         if (session == null || session.getAttribute("email") == null) {
             response.sendRedirect("login.jsp");
@@ -85,6 +97,72 @@ public class TweetsServlet extends HttpServlet {
         } catch (Exception e) {
             e.printStackTrace();
             response.getWriter().println("<h1>Error creating tweet: " + e.getMessage() + "</h1>");
+        }
+    }
+
+    @Override
+    protected void doPut(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
+        String tweetId = request.getParameter("id");
+        String content = request.getParameter("content");
+    
+        if (tweetId == null || content == null || content.trim().isEmpty()) {
+            response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
+            response.getWriter().println("{\"success\": false, \"error\": \"Invalid tweet ID or content.\"}");
+            return;
+        }
+    
+        try (Connection conn = DBConnection.getConnection()) {
+            String updateQuery = "UPDATE tweets SET content = ? WHERE id = ?";
+            try (PreparedStatement ps = conn.prepareStatement(updateQuery)) {
+                ps.setString(1, content);
+                ps.setInt(2, Integer.parseInt(tweetId));
+    
+                int rowsUpdated = ps.executeUpdate();
+                if (rowsUpdated > 0) {
+                    response.setStatus(HttpServletResponse.SC_OK);
+                    response.sendRedirect("/pweb-quiz2/profile.jsp");
+                } else {
+                    response.setStatus(HttpServletResponse.SC_NOT_FOUND);
+                    response.sendRedirect("/pweb-quiz2/profile.jsp");
+                }
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+            response.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
+            response.getWriter().println("{\"success\": false, \"error\": \"Database error.\"}");
+        }
+    }
+    
+    
+
+    @Override
+    protected void doDelete(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
+        String tweetId = request.getParameter("id");
+
+        if (tweetId == null) {
+            response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
+            response.getWriter().println("Invalid tweet ID.");
+            return;
+        }
+
+        try (Connection conn = DBConnection.getConnection()) {
+            String deleteTweet = "DELETE FROM tweets WHERE id = ?";
+            try (PreparedStatement ps = conn.prepareStatement(deleteTweet)) {
+                ps.setInt(1, Integer.parseInt(tweetId));
+                int rowsDeleted = ps.executeUpdate();
+
+                if (rowsDeleted > 0) {
+                    response.setStatus(HttpServletResponse.SC_OK);
+                    response.sendRedirect("/pweb-quiz2/profile.jsp");
+                } else {
+                    response.setStatus(HttpServletResponse.SC_NOT_FOUND);
+                    response.sendRedirect("/pweb-quiz2/profile.jsp");
+                }
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+            response.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
+            response.getWriter().println("{\"success\": false, \"error\": \"Database error.\"}");
         }
     }
 }

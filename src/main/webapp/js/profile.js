@@ -57,3 +57,83 @@ function performSearch(keyword) {
             alert("Something went wrong. Please try again.");
         });
 }
+
+function toggleEditForm(tweetId){
+    const editForm = document.getElementById(`editForm_${tweetId}`);
+    editForm.style.display = editForm.style.display === 'none' ? 'block' : 'none';
+}
+
+function submitEdit(button) {
+    const tweetId = button.getAttribute("data-id");
+    const content = document.getElementById(`editContent_${tweetId}`).value;
+
+    if (!content.trim()) {
+        alert("Content cannot be empty.");
+        return;
+    }
+
+    console.log("Tweet ID:", tweetId);
+    console.log("Content:", content); 
+
+    fetch(`/pweb-quiz2/createTweet`, {
+        method: 'PUT',
+        headers: {
+            'Content-Type': 'application/x-www-form-urlencoded',
+        },
+        body: new URLSearchParams({
+            id: tweetId,
+            content: content,
+        }),
+    })
+    .then(response => {
+        if (!response.ok) {
+            throw new Error("Failed to update tweet");
+        }
+        return response.json();
+    })
+    .then(result => {
+        if (result.success) {
+            document.getElementById(`tweetContent_${tweetId}`).textContent = content;
+            alert("Tweet updated successfully!");
+            document.getElementById(`editForm_${tweetId}`).style.display = 'none';
+        } else {
+            alert(result.error || "Failed to update tweet.");
+        }
+    })
+    .catch(error => {
+        console.error("Error updating tweet:", error);
+        alert("Something went wrong. Please try again.");
+    });
+}
+
+
+
+function deleteTweet(button) {
+    const tweetId = button.getAttribute("data-id");
+
+    if (!confirm("Are you sure you want to delete this tweet?")) {
+        return;
+    }
+
+    fetch('/pweb-quiz2/createTweet', {
+        method: 'DELETE',
+        headers: {
+            'Content-Type': 'application/x-www-form-urlencoded',
+        },
+        body: new URLSearchParams({
+            id: tweetId,
+        }),
+    })
+        .then(response => {
+            console.log(tweetId);
+            if (response.ok) {
+                alert("Tweet deleted successfully!");
+                document.getElementById(`tweet_${tweetId}`).remove();
+            } else {
+                alert("Failed to delete tweet.");
+            }
+        })
+        .catch(error => console.error("Error:", error));
+}
+
+

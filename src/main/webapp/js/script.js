@@ -12,12 +12,16 @@ function likeTweet(tweetId) {
     .then(response => response.json())
     .then(result => {
         if (result.success) {
+            console.log(tweetId);
             const likeCountElement = document.getElementById(`likeCount_${tweetId}`);
+            const likeButton = document.getElementById(`likeButton_${tweetId}`);
             
             if(result.liked){
                 likeCountElement.textContent = parseInt(likeCountElement.textContent) + 1;
+                likeButton.src = '/pweb-quiz2/asset/like2.svg';
             }else{
                 likeCountElement.textContent = parseInt(likeCountElement.textContent) - 1;
+                likeButton.src = '/pweb-quiz2/asset/like.svg';
             }
         } else {
             alert(result.error || 'Failed to like the tweet.');

@@ -129,7 +129,7 @@
                                     <small class="text-[var(--text-secondary)] mt-2 block">Posted at: <%= createdAt %></small>
                                     <div class="flex items-center space-x-4 mt-4">
                                         <button onclick="likeTweet('<%= tweetId %>')" class="flex items-center space-x-2 text-[var(--accent)] hover:text-[var(--primary)]">
-                                            <img src="/pweb-quiz2/asset/like.svg" alt="Like" class="w-5 h-5" />
+                                            <img src="/pweb-quiz2/asset/like.svg" alt="Like" class="w-5 h-5" id="likeButton_<%= tweetId %>" />
                                             <span>(<span id="likeCount_<%= tweetId %>"><%= likeCount %></span>)</span>
                                         </button>
                                         <button onclick="toggleReplyForm('<%= tweetId %>')" class="flex items-center space-x-2 text-[var(--accent)] hover:text-[var(--primary)]">

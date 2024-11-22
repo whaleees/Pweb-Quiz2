@@ -42,13 +42,14 @@
 
     try (Connection conn = DBConnection.getConnection()) {
         try (PreparedStatement ps = conn.prepareStatement(
-            "SELECT content, image_path FROM tweets WHERE user_id = (SELECT id FROM users WHERE email = ?)")) {
+            "SELECT id, content, image_path FROM tweets WHERE user_id = (SELECT id FROM users WHERE email = ?)")) {
             ps.setString(1, email);
             try (ResultSet rs = ps.executeQuery()) {
                 while (rs.next()) {
                     Map<String, String> tweet = new HashMap<>();
                     tweet.put("content", rs.getString("content"));
                     tweet.put("image_path", rs.getString("image_path"));
+                    tweet.put("id", rs.getString("id"));
                     tweets.add(tweet);
                 }
             }
@@ -197,8 +198,11 @@
         <section id="tweetsTab">
             <h2 class="text-xl font-bold mb-4 text-[var(--accent)]">Your Tweets</h2>
             <% for (Map<String, String> tweet : tweets) { %>
-                <div class="bg-[var(--secondary)] shadow p-6 rounded-lg mb-4">
-                    <p class="text-[var(--text-primary)]"><%= tweet.get("content") %></p>
+                <div id="tweet_<%= tweet.get("id") %>" class="bg-[var(--secondary)] shadow p-6 rounded-lg mb-4">
+                    <p id="tweetContent_<%= tweet.get("id") %>" class="text-[var(--text-primary)]">
+                        <%= tweet.get("content") %>
+                    </p>
+        
                     <% if (tweet.get("image_path") != null) { %>
                         <img
                             src="/pweb-quiz2/<%= tweet.get("image_path") %>"
@@ -206,12 +210,61 @@
                             class="mt-4 rounded-lg shadow max-w-full"
                         />
                     <% } %>
+                        
+                    <div class="flex items-center space-x-4 mt-4">
+                        <form action="/pweb-quiz2/createTweet" method="POST" onsubmit="return confirm('Are you sure you want to delete this tweet?')">
+                            <input type="hidden" name="_method" value="DELETE" /> 
+                            <input type="hidden" name="id" value="<%= tweet.get("id") %>" />
+                            <button
+                                type="submit"
+                                class="mt-4 px-6 py-2 rounded-lg bg-[var(--button-bg)] text-[var(--text-primary)] hover:bg-[var(--button-hover-bg)] hover:text-[var(--text-secondary)] border border-[var(--accent)] transition duration-200"
+                            >
+                                Delete
+                            </button>
+                        </form>
+                        
+                        <button 
+                            class="mt-4 px-6 py-2 rounded-lg bg-[var(--button-bg)] text-[var(--text-primary)] hover:bg-[var(--button-hover-bg)] hover:text-[var(--text-secondary)] border border-[var(--accent)] transition duration-200" 
+                            onclick="toggleEditForm('<%= tweet.get("id") %>')"
+                        >
+                        Edit
+                        </button>
+                    </div>
+
+                    <form 
+                        action="/pweb-quiz2/createTweet" 
+                        method="POST" 
+                        id="editForm_<%= tweet.get("id") %>" 
+                        class="bg-[var(--secondary)] shadow-lg rounded-lg p-6" 
+                        style="display: none;"
+                    >
+                    <input type="hidden" name="_method" value="PUT" /> 
+                    <input type="hidden" name="id" value="<%= tweet.get("id") %>" />
+
+                    <textarea
+                        name="content"
+                        id="editContent_<%= tweet.get("id") %>"
+                        class="w-full px-4 py-2 border border-[var(--accent)] rounded-lg mt-4"
+                        required
+                    ><%= tweet.get("content") %></textarea>
+                    <div class="mt-3 flex justify-end">
+                        <button
+                            type="submit"
+                            class="px-6 py-2 rounded-lg bg-[var(--button-bg)] text-[var(--text-primary)] hover:bg-[var(--button-hover-bg)] hover:text-[var(--text-secondary)] border border-[var(--accent)] transition duration-200"
+                        >
+                            Save
+                        </button>
+                    </div>
+                    </form>
                 </div>
             <% } %>
+        
             <% if (tweets.isEmpty()) { %>
                 <p class="text-[var(--text-secondary)] text-center">No tweets yet.</p>
             <% } %>
         </section>
+        
+               
 
         <section id="repliesTab" style="display: none;">
             <h2 class="text-xl font-bold mb-4 text-[var(--accent)]">Your Replies</h2>
